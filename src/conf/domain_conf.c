@@ -5697,6 +5697,31 @@ virDomainVsockDefValidate(const virDomainVsockDef *vsock)
 
 
 static int
+virDomainShmemDefValidate(const virDomainShmemDef *shmem)
+{
+    if (strchr(shmem->name, '/')) {
+        virReportError(VIR_ERR_XML_ERROR, "%s",
+                       _("shmem name cannot include '/' character"));
+        return -1;
+    }
+
+    if (STREQ(shmem->name, ".")) {
+        virReportError(VIR_ERR_XML_ERROR, "%s",
+                       _("shmem name cannot be equal to '.'"));
+        return -1;
+    }
+
+    if (STREQ(shmem->name, "..")) {
+        virReportError(VIR_ERR_XML_ERROR, "%s",
+                       _("shmem name cannot be equal to '..'"));
+        return -1;
+    }
+
+    return 0;
+}
+
+
+static int
 virDomainDeviceDefValidateInternal(const virDomainDeviceDef *dev,
                                    const virDomainDef *def)
 {
@@ -5734,6 +5759,9 @@ virDomainDeviceDefValidateInternal(const virDomainDeviceDef *dev,
     case VIR_DOMAIN_DEVICE_VSOCK:
         return virDomainVsockDefValidate(dev->data.vsock);
 
+    case VIR_DOMAIN_DEVICE_SHMEM:
+        return virDomainShmemDefValidate(dev->data.shmem);
+
     case VIR_DOMAIN_DEVICE_LEASE:
     case VIR_DOMAIN_DEVICE_FS:
     case VIR_DOMAIN_DEVICE_INPUT:
@@ -5743,7 +5771,6 @@ virDomainDeviceDefValidateInternal(const virDomainDeviceDef *dev,
     case VIR_DOMAIN_DEVICE_HUB:
     case VIR_DOMAIN_DEVICE_MEMBALLOON:
     case VIR_DOMAIN_DEVICE_NVRAM:
-    case VIR_DOMAIN_DEVICE_SHMEM:
     case VIR_DOMAIN_DEVICE_TPM:
     case VIR_DOMAIN_DEVICE_PANIC:
     case VIR_DOMAIN_DEVICE_IOMMU:
