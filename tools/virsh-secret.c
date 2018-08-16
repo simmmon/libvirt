@@ -35,6 +35,7 @@
 #include "virsecret.h"
 #include "virstring.h"
 #include "virtime.h"
+#include "vsh-table.h"
 
 static virSecretPtr
 virshCommandOptSecret(vshControl *ctl, const vshCmd *cmd, const char **name)
@@ -507,6 +508,7 @@ cmdSecretList(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
     virshSecretListPtr list = NULL;
     bool ret = false;
     unsigned int flags = 0;
+    vshTablePtr table = NULL;
 
     if (vshCommandOptBool(cmd, "ephemeral"))
         flags |= VIR_CONNECT_LIST_SECRETS_EPHEMERAL;
@@ -523,15 +525,17 @@ cmdSecretList(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
     if (!(list = virshSecretListCollect(ctl, flags)))
         return false;
 
-    vshPrintExtra(ctl, " %-36s  %s\n", _("UUID"), _("Usage"));
-    vshPrintExtra(ctl, "----------------------------------------"
-                       "----------------------------------------\n");
+    table = vshTableNew("UUID", "Usage", NULL);
+    if (!table)
+        goto cleanup;
 
     for (i = 0; i < list->nsecrets; i++) {
         virSecretPtr sec = list->secrets[i];
         int usageType = virSecretGetUsageType(sec);
         const char *usageStr = virSecretUsageTypeToString(usageType);
         char uuid[VIR_UUID_STRING_BUFLEN];
+        virBuffer buf = VIR_BUFFER_INITIALIZER;
+        const char *usage;
 
         if (virSecretGetUUIDString(sec, uuid) < 0) {
             vshError(ctl, "%s", _("Failed to get uuid of secret"));
@@ -539,18 +543,28 @@ cmdSecretList(vshControl *ctl, const vshCmd *cmd ATTRIBUTE_UNUSED)
         }
 
         if (usageType) {
-            vshPrint(ctl, " %-36s  %s %s\n",
-                     uuid, usageStr,
-                     virSecretGetUsageID(sec));
+            virBufferStrcat(&buf, usageStr, " ",
+                            virSecretGetUsageID(sec), NULL);
+            usage = virBufferCurrentContent(&buf);
+            if (!usage)
+                goto cleanup;
+
+            if (vshTableRowAppend(table, uuid, usage, NULL) < 0)
+                goto cleanup;
+
+            virBufferFreeAndReset(&buf);
         } else {
-            vshPrint(ctl, " %-36s  %s\n",
-                     uuid, _("Unused"));
+            if (vshTableRowAppend(table, uuid, "Unused", NULL) < 0)
+                goto cleanup;
         }
     }
+
+    vshTablePrintToStdout(table, ctl);
 
     ret = true;
 
  cleanup:
+    vshTableFree(table);
     virshSecretListFree(list);
     return ret;
 }
