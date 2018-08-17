@@ -143,6 +143,7 @@ libvirt_shell_la_LIBADD = \
 		$(LIBXML_LIBS) \
 		$(READLINE_LIBS) \
 		../gnulib/lib/libgnu.la \
+		$(UNISTRING_LIBS) \
 		$(NULL)
 libvirt_shell_la_SOURCES = \
 		vsh.c vsh.h \
