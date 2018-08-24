@@ -945,6 +945,9 @@ vshtabletest_SOURCES = \
 vshtabletest_LDADD = \
 	$(LDADDS) \
 	../tools/libvirt_shell.la
+vshtabletest_CFLAGS = \
+	$(AM_CFLAGS) \
+	-finput-charset=UTF-8
 
 virshtest_SOURCES = \
 	virshtest.c \
